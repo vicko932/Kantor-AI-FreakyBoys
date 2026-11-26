@@ -1,0 +1,15 @@
+# Dependency Node.js (jangan pernah di-upload)
+node_modules/
+
+# File rahasia berisi API Key pribadi
+api-keys.json
+.env
+
+# Folder sementara hasil kerja & lampiran user (otomatis dibuat ulang saat server jalan)
+workspace/
+uploads/
+
+# Log & file sistem OS
+*.log
+.DS_Store
+Thumbs.db

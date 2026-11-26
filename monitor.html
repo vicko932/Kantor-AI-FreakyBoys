@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kantor AI — Isometric 2.5D Workspace & Chat</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #090d16;
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .header {
+      height: 50px;
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      padding: 0 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .header h1 { font-size: 15.5px; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .pills { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+    .pill {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 4px 11px;
+      border-radius: 99px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-keys {
+      cursor: pointer;
+      color: #38bdf8;
+      border-color: #334155;
+      transition: border-color 0.15s, background-color 0.15s;
+    }
+    .btn-keys:hover {
+      background: #263449;
+      border-color: #38bdf8;
+    }
+    .btn-keys.missing {
+      color: #f87171;
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.12);
+      animation: pulseWarn 1.8s infinite;
+    }
+    @keyframes pulseWarn {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+      50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+    }
+    .mini-bar-wrap {
+      width: 46px;
+      height: 7px;
+      background: #090d16;
+      border-radius: 99px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+    .mini-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: #4ade80;
+      transition: width 0.25s ease, background-color 0.25s ease;
+    }
+    .budget-select {
+      background: #0f172a;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 2px 5px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-reset-quota {
+      background: #0f172a;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-reset-quota:hover { color: #f8fafc; border-color: #38bdf8; }
+
+    /* MAIN FLEX WORKSPACE DENGAN DRAGGABLE SPLITTERS */
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      height: calc(100vh - 50px);
+    }
+
+    /* KIRI: KANTOR ISOMETRIK 2.5D + LOG */
+    .left-pane {
+      flex: 1;
+      min-width: 400px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .canvas-box {
+      flex: 1;
+      min-height: 240px;
+      position: relative;
+      background: radial-gradient(circle at 50% 42%, #131e36 0%, #090e1a 100%);
+      border: 1.5px solid #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* SPLITTER HORIZONTAL (CANVAS <-> LOG) */
+    .resizer-h {
+      height: 10px;
+      cursor: row-resize;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      touch-action: none;
+    }
+    .resizer-h::after {
+      content: '';
+      width: 48px;
+      height: 3.5px;
+      border-radius: 99px;
+      background: #334155;
+      transition: background-color 0.15s, width 0.15s;
+    }
+    .resizer-h:hover::after,
+    .resizer-h.dragging::after {
+      background: #38bdf8;
+      width: 72px;
+    }
+
+    .log-box {
+      height: 92px;
+      min-height: 52px;
+      flex-shrink: 0;
+      background: #060911;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-family: Consolas, monospace;
+      font-size: 11.5px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+
+    /* SPLITTER VERTIKAL (KANTOR 2.5D <-> CHAT UI) */
+    .resizer-v {
+      width: 10px;
+      cursor: col-resize;
+      background: #090d16;
+      border-left: 1px solid #1e293b;
+      border-right: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      touch-action: none;
+      transition: background-color 0.15s;
+    }
+    .resizer-v::after {
+      content: '';
+      width: 3.5px;
+      height: 48px;
+      border-radius: 99px;
+      background: #334155;
+      transition: background-color 0.15s, height 0.15s;
+    }
+    .resizer-v:hover,
+    .resizer-v.dragging {
+      background: #0f172a;
+    }
+    .resizer-v:hover::after,
+    .resizer-v.dragging::after {
+      background: #38bdf8;
+      height: 76px;
+    }
+
+    /* KANAN: CHAT & FILE UPLOADER */
+    .right-pane {
+      width: 360px;
+      min-width: 240px;
+      max-width: 75vw;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: #0b1120;
+      height: 100%;
+    }
+    .chat-header-mini {
+      height: 32px;
+      padding: 0 12px;
+      background: #0d1527;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+    .chat-size-tag {
+      font-family: Consolas, monospace;
+      font-size: 10.5px;
+      color: #64748b;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .msg {
+      max-width: 92%;
+      padding: 9px 12px;
+      border-radius: 11px;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: #1d4ed8;
+      color: #fff;
+      border-bottom-right-radius: 3px;
+    }
+    .msg.ai {
+      align-self: flex-start;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f1f5f9;
+      border-bottom-left-radius: 3px;
+    }
+    .msg-files {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 7px;
+    }
+    .file-chip {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid #475569;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #38bdf8;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .file-chip:hover { background: #0f172a; border-color: #38bdf8; }
+
+    /* AREA INPUT CHAT */
+    .composer {
+      border-top: 1px solid #1e293b;
+      background: #0f172a;
+      padding: 10px;
+      flex-shrink: 0;
+    }
+    .composer.dragover {
+      border-color: #38bdf8;
+      background: #172554;
+    }
+    .attachment-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .att-tag {
+      background: #1e293b;
+      border: 1px solid #3b82f6;
+      color: #93c5fd;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .att-tag span { cursor: pointer; color: #f87171; font-weight: bold; }
+    .input-row {
+      display: flex;
+      gap: 6px;
+      align-items: flex-end;
+    }
+    .btn-attach {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      font-size: 17px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .btn-attach:hover { background: #334155; }
+    textarea {
+      flex: 1;
+      min-width: 0;
+      background: #090d16;
+      border: 1px solid #334155;
+      color: #fff;
+      border-radius: 9px;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: none;
+      max-height: 110px;
+    }
+    textarea:focus { outline: none; border-color: #3b82f6; }
+    .btn-send {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      height: 36px;
+      padding: 0 13px;
+      border-radius: 9px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .btn-send:disabled { background: #334155; cursor: not-allowed; }
+    .btn-stop {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 9px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: none;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-stop:hover { background: #dc2626; }
+    .btn-stop:disabled { background: #7f1d1d; cursor: not-allowed; }
+    .composer-footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 4px;
+      margin-top: 6px;
+      font-size: 10.5px;
+      color: #94a3b8;
+    }
+    .composer-footer label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+    /* MODAL SETUP API KEY (NON-CODER FRIENDLY) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 7, 15, 0.82);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      width: 100%;
+      max-width: 490px;
+      background: #0f172a;
+      border: 1.5px solid #334155;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    }
+    .modal-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .modal-top h2 {
+      margin: 0;
+      font-size: 17px;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-close-modal {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .btn-close-modal:hover { color: #fff; }
+    .modal-desc {
+      font-size: 12.5px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin: 0 0 14px 0;
+      background: #090d16;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+    }
+    .key-group {
+      margin-bottom: 12px;
+    }
+    .key-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .key-status {
+      font-size: 11px;
+      font-family: Consolas, monospace;
+      color: #64748b;
+    }
+    .key-status.ok { color: #4ade80; }
+    .btn-get-key {
+      color: #38bdf8;
+      text-decoration: none;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+    .btn-get-key:hover { text-decoration: underline; }
+    .key-input-row {
+      display: flex;
+      gap: 6px;
+    }
+    .key-input {
+      flex: 1;
+      background: #090d16;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-family: Consolas, monospace;
+      font-size: 12.5px;
+    }
+    .key-input:focus { outline: none; border-color: #38bdf8; }
+    .btn-eye, .btn-clear-key {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      border-radius: 8px;
+      padding: 0 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-eye:hover, .btn-clear-key:hover { background: #334155; }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .btn-save-keys {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-save-keys:hover { background: #1d4ed8; }
+    .modal-feedback {
+      font-size: 12px;
+      margin-top: 8px;
+      min-height: 16px;
+      color: #4ade80;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🏢 Kantor AI Multi-Divisi <span style="font-size:11px;color:#38bdf8;background:#1e293b;padding:2px 8px;border-radius:6px;border:1px solid #334155;">ISOMETRIC 2.5D</span></h1>
+    <div class="pills">
+      <button class="pill btn-keys" id="btnApiKeys" onclick="bukaModalKeys(false)">⚙️ API Keys</button>
+      <span class="pill" style="color:#a78bfa;" id="otakBadge">Otak: Standby</span>
+      <div class="pill" id="sisaPill" style="color:#4ade80;">
+        <span id="sisaText">🔋 Sisa: 100.0%</span>
+        <div class="mini-bar-wrap"><div class="mini-bar-fill" id="sisaMiniBar"></div></div>
+        <select id="budgetSelect" class="budget-select" title="Target Kuota Token">
+          <option value="10000">10K</option>
+          <option value="50000">50K</option>
+          <option value="100000" selected>100K</option>
+          <option value="250000">250K</option>
+          <option value="500000">500K</option>
+          <option value="1000000">1M</option>
+        </select>
+        <button class="btn-reset-quota" title="Reset Pemakaian Token ke 100%" onclick="resetKuotaToken()">↺</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- KIRI: KANTOR ISOMETRIK 2.5D -->
+    <div class="left-pane" id="leftPane">
+      <div class="canvas-box" id="canvasBox">
+        <canvas id="officeCanvas" width="760" height="480"></canvas>
+      </div>
+      <div class="resizer-h" id="resizerH" title="Geser atas/bawah untuk atur tinggi Log"></div>
+      <div class="log-box" id="log"></div>
+    </div>
+
+    <!-- SPLITTER VERTIKAL DRAGGABLE -->
+    <div class="resizer-v" id="resizerV" title="Geser kiri/kanan atur lebar Chat (Klik 2x untuk ringkas/normal)"></div>
+
+    <!-- KANAN: CHAT & FILE UPLOAD -->
+    <div class="right-pane" id="rightPane">
+      <div class="chat-header-mini">
+        <span>💬 Ruang Instruksi & Chat</span>
+        <span class="chat-size-tag" id="chatSizeTag">360px</span>
+      </div>
+      <div class="chat-messages" id="chatBox">
+        <div class="msg ai">Halo! Kirim instruksi atau drag-and-drop file ke sini (Excel, Word, PPT, Gambar, atau Kode). Tim kantor 2.5D siap langsung memprosesnya.</div>
+      </div>
+
+      <div class="composer" id="dropZone">
+        <div class="attachment-bar" id="attBar"></div>
+        <div class="input-row">
+          <input type="file" id="fileInput" multiple hidden accept=".xlsx,.xls,.csv,.docx,.pptx,.txt,.md,.json,.js,.html,.css,.png,.jpg,.jpeg,.webp" />
+          <button class="btn-attach" title="Lampirkan File" onclick="document.getElementById('fileInput').click()">+</button>
+          <textarea id="promptInput" rows="2" placeholder="Ketik pesan, paste gambar (Ctrl+V), atau tarik file..."></textarea>
+          <button class="btn-send" id="btnKirim" onclick="kirimPesan()">Kirim</button>
+          <button class="btn-stop" id="btnStop" type="button" onclick="hentikanTugas()">⏹ Stop</button>
+        </div>
+        <div class="composer-footer">
+          <label><input type="checkbox" id="chkReset" /> Reset workspace lama</label>
+          <span>Enter = Kirim</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL SETUP API KEYS UNTUK PENGGUNA BARU -->
+  <div class="modal-backdrop" id="apiModal">
+    <div class="modal-card">
+      <div class="modal-top">
+        <h2>🔑 Pengaturan API Key Pribadi</h2>
+        <button class="btn-close-modal" id="btnCloseModal" onclick="tutupModalKeys()">×</button>
+      </div>
+      <p class="modal-desc" id="modalDesc">
+        Setiap pengguna memakai API Key dari akun masing-masing (gratis).<br>
+        <strong>Cara mudah:</strong> Klik link <em>"Ambil Key Gratis ↗"</em> di bawah → Login → Buat Key → Copy & Paste ke kolomnya (minimal isi salah satu, disarankan Gemini atau Groq).
+      </p>
+
+      <div class="key-group">
+        <div class="key-label-row">
+          <span>1. Google Gemini API Key <span class="key-status" id="stGemini">(Belum diisi)</span></span>
+          <a class="btn-get-key" href="https://aistudio.google.com/apikey" target="_blank">Ambil Key Gratis ↗</a>
+        </div>
+        <div class="key-input-row">
+          <input type="password" class="key-input" id="inpGemini" placeholder="Tempel key AIzaSy... di sini" />
+          <button class="btn-eye" type="button" onclick="toggleEye('inpGemini')">👁️</button>
+          <button class="btn-clear-key" type="button" title="Hapus Key ini" onclick="hapusSatuKey('gemini')">Hapus</button>
+        </div>
+      </div>
+
+      <div class="key-group">
+        <div class="key-label-row">
+          <span>2. Groq API Key (Cepat) <span class="key-status" id="stGroq">(Belum diisi)</span></span>
+          <a class="btn-get-key" href="https://console.groq.com/keys" target="_blank">Ambil Key Gratis ↗</a>
+        </div>
+        <div class="key-input-row">
+          <input type="password" class="key-input" id="inpGroq" placeholder="Tempel key gsk_... di sini" />
+          <button class="btn-eye" type="button" onclick="toggleEye('inpGroq')">👁️</button>
+          <button class="btn-clear-key" type="button" title="Hapus Key ini" onclick="hapusSatuKey('groq')">Hapus</button>
+        </div>
+      </div>
+
+      <div class="key-group">
+        <div class="key-label-row">
+          <span>3. OpenRouter API Key (Cadangan) <span class="key-status" id="stOpenrouter">(Belum diisi)</span></span>
+          <a class="btn-get-key" href="https://openrouter.ai/keys" target="_blank">Ambil Key Gratis ↗</a>
+        </div>
+        <div class="key-input-row">
+          <input type="password" class="key-input" id="inpOpenrouter" placeholder="Tempel key sk-or-... di sini" />
+          <button class="btn-eye" type="button" onclick="toggleEye('inpOpenrouter')">👁️</button>
+          <button class="btn-clear-key" type="button" title="Hapus Key ini" onclick="hapusSatuKey('openrouter')">Hapus</button>
+        </div>
+      </div>
+
+      <div class="modal-feedback" id="modalFeedback"></div>
+
+      <div class="modal-actions">
+        <button class="btn-save-keys" onclick="simpanApiKeys()">💾 Simpan & Mulai Bekerja</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvasBox = document.getElementById('canvasBox');
+    const canvas = document.getElementById('officeCanvas');
+    const ctx = canvas.getContext('2d');
+    const logEl = document.getElementById('log');
+    const chatBox = document.getElementById('chatBox');
+    let fileAntrean = [];
+
+    // --- MANAJEMEN API KEY LOKAL PER PENGGUNA ---
+    let adaKeyTerpasang = false;
+
+    window.bukaModalKeys = (wajibSetup = false) => {
+      document.getElementById('modalFeedback').innerText = '';
+      document.getElementById('btnCloseModal').style.display = wajibSetup ? 'none' : 'block';
+      document.getElementById('apiModal').classList.add('open');
+    };
+
+    window.tutupModalKeys = () => {
+      document.getElementById('apiModal').classList.remove('open');
+    };
+
+    window.toggleEye = (inputId) => {
+      const el = document.getElementById(inputId);
+      el.type = el.type === 'password' ? 'text' : 'password';
+    };
+
+    async function muatStatusKeys(autoOpenIfEmpty = false) {
+      try {
+        const res = await fetch('/api/keys');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const daftar = [
+          { key: 'gemini', elId: 'stGemini' },
+          { key: 'groq', elId: 'stGroq' },
+          { key: 'openrouter', elId: 'stOpenrouter' }
+        ];
+
+        let jumlahAktif = 0;
+        daftar.forEach((item) => {
+          const stEl = document.getElementById(item.elId);
+          if (data[item.key]) {
+            jumlahAktif++;
+            stEl.className = 'key-status ok';
+            stEl.innerText = `✅ Aktif (${data.masked?.[item.key] || 'tersimpan'})`;
+          } else {
+            stEl.className = 'key-status';
+            stEl.innerText = '(Kosong)';
+          }
+        });
+
+        adaKeyTerpasang = jumlahAktif > 0;
+        const btnKeys = document.getElementById('btnApiKeys');
+        if (adaKeyTerpasang) {
+          btnKeys.classList.remove('missing');
+          btnKeys.innerText = `⚙️ API Keys (${jumlahAktif} aktif)`;
+        } else {
+          btnKeys.classList.add('missing');
+          btnKeys.innerText = '⚠️ Pasang API Key';
+          if (autoOpenIfEmpty) {
+            bukaModalKeys(true);
+          }
+        }
+      } catch (err) {
+        // Abaikan jika endpoint backend belum ditambahkan
+      }
+    }
+
+    window.simpanApiKeys = async () => {
+      const payload = {
+        gemini: document.getElementById('inpGemini').value.trim(),
+        groq: document.getElementById('inpGroq').value.trim(),
+        openrouter: document.getElementById('inpOpenrouter').value.trim()
+      };
+
+      const fb = document.getElementById('modalFeedback');
+      if (!payload.gemini && !payload.groq && !payload.openrouter && !adaKeyTerpasang) {
+        fb.style.color = '#f87171';
+        fb.innerText = '⚠️ Masukkan minimal 1 API Key (Gemini atau Groq) terlebih dahulu.';
+        return;
+      }
+
+      const res = await fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        document.getElementById('inpGemini').value = '';
+        document.getElementById('inpGroq').value = '';
+        document.getElementById('inpOpenrouter').value = '';
+        fb.style.color = '#4ade80';
+        fb.innerText = '✅ API Key berhasil disimpan ke komputer ini!';
+        tambahLog('🔑 API Key pribadi berhasil diperbarui.', '#4ade80');
+        await muatStatusKeys(false);
+        setTimeout(() => tutupModalKeys(), 700);
+      } else {
+        fb.style.color = '#f87171';
+        fb.innerText = '❌ Gagal menyimpan key. Pastikan server aktif.';
+      }
+    };
+
+    window.hapusSatuKey = async (provider) => {
+      await fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clear: provider })
+      });
+      tambahLog(`🗑️ API Key ${provider} dihapus dari penyimpanan lokal.`, '#facc15');
+      await muatStatusKeys(false);
+    };
+
+    muatStatusKeys(true);
+
+    // --- UKURAN VIEWPORT KANVAS DINAMIS & RESPONSIF ---
+    const WORLD_W = 760;
+    const WORLD_H = 480;
+    let viewW = 760;
+    let viewH = 480;
+
+    function syncCanvasSize() {
+      const rect = canvasBox.getBoundingClientRect();
+      viewW = Math.max(360, Math.floor(rect.width));
+      viewH = Math.max(240, Math.floor(rect.height));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const targetW = Math.floor(viewW * dpr);
+      const targetH = Math.floor(viewH * dpr);
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => syncCanvasSize()).observe(canvasBox);
+    }
+    window.addEventListener('resize', syncCanvasSize);
+
+    // --- DRAGGABLE SPLITTERS (GESER UKURAN PANEL CHAT & LOG) ---
+    const resizerV = document.getElementById('resizerV');
+    const rightPane = document.getElementById('rightPane');
+    const chatSizeTag = document.getElementById('chatSizeTag');
+    const resizerH = document.getElementById('resizerH');
+    const leftPane = document.getElementById('leftPane');
+
+    function terapkanLebarChat(px) {
+      const minW = 240;
+      const maxW = Math.max(320, window.innerWidth - 420);
+      const clamped = Math.round(Math.min(maxW, Math.max(minW, px)));
+      rightPane.style.width = `${clamped}px`;
+      chatSizeTag.innerText = `${clamped}px`;
+      syncCanvasSize();
+      return clamped;
+    }
+
+    const savedChatW = Number(localStorage.getItem('kantor_ai_chat_width'));
+    terapkanLebarChat(savedChatW >= 240 ? savedChatW : 360);
+
+    const savedLogH = Number(localStorage.getItem('kantor_ai_log_height'));
+    if (savedLogH >= 52 && savedLogH <= window.innerHeight * 0.6) {
+      logEl.style.height = `${savedLogH}px`;
+    }
+    syncCanvasSize();
+
+    let isDraggingV = false;
+    resizerV.addEventListener('pointerdown', (e) => {
+      isDraggingV = true;
+      resizerV.classList.add('dragging');
+      resizerV.setPointerCapture(e.pointerId);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    resizerV.addEventListener('pointermove', (e) => {
+      if (!isDraggingV) return;
+      terapkanLebarChat(window.innerWidth - e.clientX);
+    });
+
+    const stopDragV = (e) => {
+      if (!isDraggingV) return;
+      isDraggingV = false;
+      resizerV.classList.remove('dragging');
+      if (e && resizerV.hasPointerCapture?.(e.pointerId)) {
+        resizerV.releasePointerCapture(e.pointerId);
+      }
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      localStorage.setItem('kantor_ai_chat_width', String(rightPane.offsetWidth));
+    };
+    resizerV.addEventListener('pointerup', stopDragV);
+    resizerV.addEventListener('pointercancel', stopDragV);
+
+    resizerV.addEventListener('dblclick', () => {
+      const nextW = rightPane.offsetWidth > 300 ? 270 : 360;
+      const applied = terapkanLebarChat(nextW);
+      localStorage.setItem('kantor_ai_chat_width', String(applied));
+    });
+
+    let isDraggingH = false;
+    resizerH.addEventListener('pointerdown', (e) => {
+      isDraggingH = true;
+      resizerH.classList.add('dragging');
+      resizerH.setPointerCapture(e.pointerId);
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    resizerH.addEventListener('pointermove', (e) => {
+      if (!isDraggingH) return;
+      const rect = leftPane.getBoundingClientRect();
+      const minH = 52;
+      const maxH = Math.max(120, rect.height - 250);
+      const newH = Math.min(maxH, Math.max(minH, rect.bottom - e.clientY - 12));
+      logEl.style.height = `${Math.round(newH)}px`;
+      syncCanvasSize();
+    });
+
+    const stopDragH = (e) => {
+      if (!isDraggingH) return;
+      isDraggingH = false;
+      resizerH.classList.remove('dragging');
+      if (e && resizerH.hasPointerCapture?.(e.pointerId)) {
+        resizerH.releasePointerCapture(e.pointerId);
+      }
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      localStorage.setItem('kantor_ai_log_height', String(logEl.offsetHeight));
+    };
+    resizerH.addEventListener('pointerup', stopDragH);
+    resizerH.addEventListener('pointercancel', stopDragH);
+
+    // --- KONFIGURASI PROYEKSI ISOMETRIK 2.5D ---
+    const ISO = {
+      gridW: 10,
+      gridH: 10,
+      tileW: 62,
+      tileH: 31,
+      originX: 380,
+      originY: 112
+    };
+
+    function toIso(gx, gy, gz = 0) {
+      return {
+        x: ISO.originX + (gx - gy) * (ISO.tileW / 2),
+        y: ISO.originY + (gx + gy) * (ISO.tileH / 2) - gz
+      };
+    }
+
+    // --- ZONA KOORDINAT GRID (gx, gy) ---
+    const ZONA = {
+      lounge: {
+        Manager: { gx: 1.2, gy: 1.5 },
+        Analyst: { gx: 2.2, gy: 1.5 },
+        'Web Coder': { gx: 1.2, gy: 2.6 },
+        'QA Reviewer': { gx: 2.2, gy: 2.6 }
+      },
+      meja: {
+        Manager: { gx: 4.4, gy: 2.4, deskGx: 5.2, deskGy: 2.4, warna: '#3b82f6', label: '👔 MANAGER' },
+        Analyst: { gx: 7.2, gy: 4.8, deskGx: 8.0, deskGy: 4.8, warna: '#a855f7', label: '📊 ANALYST' },
+        'Web Coder': { gx: 2.4, gy: 6.8, deskGx: 3.2, deskGy: 6.8, warna: '#10b981', label: '💻 WEB CODER' },
+        'QA Reviewer': { gx: 6.0, gy: 7.8, deskGx: 6.8, deskGy: 7.8, warna: '#f59e0b', label: '🔍 QA REVIEWER' }
+      }
+    };
+
+    const agents = {
+      Manager: {
+        nama: 'Manager',
+        warnaBaju: '#3b82f6',
+        warnaCelana: '#1e3a8a',
+        warnaRambut: '#1e293b',
+        aksesoris: 'tie',
+        gx: ZONA.lounge.Manager.gx,
+        gy: ZONA.lounge.Manager.gy,
+        targetGx: ZONA.lounge.Manager.gx,
+        targetGy: ZONA.lounge.Manager.gy,
+        status: 'idle',
+        activeBrain: null,
+        bubble: 'Standby',
+        bubbleTimer: 0,
+        stepAnim: 0
+      },
+      Analyst: {
+        nama: 'Analyst',
+        warnaBaju: '#a855f7',
+        warnaCelana: '#4c1d95',
+        warnaRambut: '#3b0764',
+        aksesoris: 'glasses',
+        gx: ZONA.lounge.Analyst.gx,
+        gy: ZONA.lounge.Analyst.gy,
+        targetGx: ZONA.lounge.Analyst.gx,
+        targetGy: ZONA.lounge.Analyst.gy,
+        status: 'idle',
+        activeBrain: null,
+        bubble: 'Siap analisis',
+        bubbleTimer: 0,
+        stepAnim: 0
+      },
+      'Web Coder': {
+        nama: 'Web Coder',
+        warnaBaju: '#10b981',
+        warnaCelana: '#064e3b',
+        warnaRambut: '#0f172a',
+        aksesoris: 'headset',
+        gx: ZONA.lounge['Web Coder'].gx,
+        gy: ZONA.lounge['Web Coder'].gy,
+        targetGx: ZONA.lounge['Web Coder'].gx,
+        targetGy: ZONA.lounge['Web Coder'].gy,
+        status: 'idle',
+        activeBrain: null,
+        bubble: 'Siap ngoding',
+        bubbleTimer: 0,
+        stepAnim: 0
+      },
+      'QA Reviewer': {
+        nama: 'QA Reviewer',
+        warnaBaju: '#f59e0b',
+        warnaCelana: '#78350f',
+        warnaRambut: '#451a03',
+        aksesoris: 'glasses',
+        gx: ZONA.lounge['QA Reviewer'].gx,
+        gy: ZONA.lounge['QA Reviewer'].gy,
+        targetGx: ZONA.lounge['QA Reviewer'].gx,
+        targetGy: ZONA.lounge['QA Reviewer'].gy,
+        status: 'idle',
+        activeBrain: null,
+        bubble: 'Standby',
+        bubbleTimer: 0,
+        stepAnim: 0
+      }
+    };
+
+    // --- TELEMETRI TOKEN, SISA KUOTA & AI BRAIN REAL-TIME ---
+    const savedBudget = Number(localStorage.getItem('kantor_ai_quota_budget')) || 100000;
+    const savedUsed = Number(localStorage.getItem('kantor_ai_session_used')) || 0;
+
+    const tokenTelemetry = {
+      quotaBudget: savedBudget,
+      lastRawTotal: 0,
+      sessionTotal: savedUsed,
+      displayedSession: savedUsed,
+      displayedRemaining: Math.max(0, savedBudget - savedUsed),
+      orderTotal: 0,
+      displayedOrder: 0,
+      activeAgent: 'Manager',
+      perAgent: {
+        Manager: 0,
+        Analyst: 0,
+        'Web Coder': 0,
+        'QA Reviewer': 0
+      },
+      history: [],
+      floatingPopups: [],
+      orderStartTime: null,
+      burnRate: 0,
+      pulseGlow: 0
+    };
+
+    const budgetSelectEl = document.getElementById('budgetSelect');
+    if ([...budgetSelectEl.options].some((o) => Number(o.value) === savedBudget)) {
+      budgetSelectEl.value = String(savedBudget);
+    }
+    budgetSelectEl.addEventListener('change', (e) => {
+      tokenTelemetry.quotaBudget = Number(e.target.value) || 100000;
+      localStorage.setItem('kantor_ai_quota_budget', String(tokenTelemetry.quotaBudget));
+      tambahLog(`🔋 Target kuota token diatur ke ${tokenTelemetry.quotaBudget.toLocaleString()} tok`, '#38bdf8');
+    });
+
+    window.resetKuotaToken = () => {
+      tokenTelemetry.sessionTotal = 0;
+      tokenTelemetry.orderTotal = 0;
+      tokenTelemetry.burnRate = 0;
+      tokenTelemetry.history = [];
+      Object.keys(tokenTelemetry.perAgent).forEach((k) => { tokenTelemetry.perAgent[k] = 0; });
+      localStorage.setItem('kantor_ai_session_used', '0');
+      tambahLog('🔄 Kuota token di-reset kembali ke 100.0%.', '#4ade80');
+    };
+
+    function getQuotaColor(pct) {
+      if (pct > 50) return '#4ade80';
+      if (pct > 20) return '#facc15';
+      return '#f87171';
+    }
+
+    let currentBrain = 'Standby';
+    let brainPulse = 0;
+    let isOrderRunning = false;
+    let boardStatus = 'KANTOR STANDBY';
+    let boardColor = '#38bdf8';
+    let paketDokumen = null;
+    let frameCount = 0;
+
+    function getBrainColor(brainName) {
+      const lower = (brainName || '').toLowerCase();
+      if (lower.includes('gemini')) return '#38bdf8';
+      if (lower.includes('groq') || lower.includes('gpt') || lower.includes('llama')) return '#f97316';
+      if (lower === 'standby') return '#64748b';
+      return '#a78bfa';
+    }
+
+    function setActiveBrain(namaBrain) {
+      if (!namaBrain) return;
+      currentBrain = namaBrain;
+      brainPulse = 1.0;
+      document.getElementById('otakBadge').innerText = `Otak: ${currentBrain}`;
+
+      const ag = tokenTelemetry.activeAgent;
+      if (ag && agents[ag]) {
+        agents[ag].activeBrain = currentBrain;
+      }
+      Object.values(agents).forEach((a) => {
+        if (a.status === 'working') {
+          a.activeBrain = currentBrain;
+        }
+      });
+    }
+
+    function tambahLog(teks, warna = '#94a3b8') {
+      logEl.innerHTML += `<div style="color:${warna}">[${new Date().toLocaleTimeString()}] ${teks}</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function tambahChat(pengirim, teks, files = []) {
+      const div = document.createElement('div');
+      div.className = `msg ${pengirim}`;
+      let html = escapeHtml(teks);
+
+      if (files.length > 0) {
+        html += `<div class="msg-files">`;
+        files.forEach((f) => {
+          if (pengirim === 'ai') {
+            html += `<a class="file-chip" href="/preview/${encodeURIComponent(f)}" target="_blank">📄 ${escapeHtml(f)} ↗</a>`;
+          } else {
+            html += `<span class="file-chip">📎 ${escapeHtml(f)}</span>`;
+          }
+        });
+        html += `</div>`;
+      }
+      div.innerHTML = html;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function setBubble(namaAgent, teks, durasi = 340) {
+      const a = agents[namaAgent];
+      if (!a) return;
+      a.bubble = teks.length > 34 ? teks.slice(0, 32) + '...' : teks;
+      a.bubbleTimer = durasi;
+    }
+
+    function suruhJalan(namaAgent, tGx, tGy, statusAfter = 'working', nextTarget = null) {
+      const a = agents[namaAgent];
+      if (!a) return;
+      a.targetGx = tGx;
+      a.targetGy = tGy;
+      a.statusAfter = statusAfter;
+      a.nextTarget = nextTarget;
+    }
+
+    function catatTokenMasuk(rawTotal) {
+      const raw = Number(rawTotal) || 0;
+      const delta = raw >= tokenTelemetry.lastRawTotal
+        ? raw - tokenTelemetry.lastRawTotal
+        : raw;
+      tokenTelemetry.lastRawTotal = raw;
+
+      if (delta <= 0) return;
+
+      tokenTelemetry.sessionTotal += delta;
+      tokenTelemetry.orderTotal += delta;
+      tokenTelemetry.pulseGlow = 1.0;
+      localStorage.setItem('kantor_ai_session_used', String(tokenTelemetry.sessionTotal));
+
+      const ag = tokenTelemetry.activeAgent || 'Manager';
+      if (tokenTelemetry.perAgent[ag] !== undefined) {
+        tokenTelemetry.perAgent[ag] += delta;
+      }
+
+      tokenTelemetry.history.push({
+        delta,
+        agent: ag,
+        color: agents[ag]?.warnaBaju || '#38bdf8'
+      });
+      if (tokenTelemetry.history.length > 16) tokenTelemetry.history.shift();
+
+      if (tokenTelemetry.orderStartTime) {
+        const elapsedSec = Math.max(1, (Date.now() - tokenTelemetry.orderStartTime) / 1000);
+        tokenTelemetry.burnRate = Math.round(tokenTelemetry.orderTotal / elapsedSec);
+      }
+
+      const targetAgent = agents[ag] || agents.Manager;
+      tokenTelemetry.floatingPopups.push({
+        gx: targetAgent.gx,
+        gy: targetAgent.gy,
+        gz: 78,
+        text: `-${delta.toLocaleString()} tok`,
+        color: targetAgent.warnaBaju,
+        life: 95,
+        maxLife: 95
+      });
+
+      tokenTelemetry.floatingPopups.push({
+        gx: 8.6,
+        gy: 0.8,
+        gz: 92,
+        text: `-${delta.toLocaleString()}`,
+        color: '#facc15',
+        life: 75,
+        maxLife: 75
+      });
+    }
+
+    // --- HANDLE LAMPIRAN FILE ---
+    function bacaFileKeAntrean(fileList) {
+      Array.from(fileList).forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          fileAntrean.push({ name: file.name, base64 });
+          renderAttachmentBar();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderAttachmentBar() {
+      const bar = document.getElementById('attBar');
+      bar.innerHTML = fileAntrean
+        .map((f, idx) => `<div class="att-tag">📎 ${escapeHtml(f.name)} <span onclick="hapusLampiran(${idx})">×</span></div>`)
+        .join('');
+    }
+
+    window.hapusLampiran = (idx) => {
+      fileAntrean.splice(idx, 1);
+      renderAttachmentBar();
+    };
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      bacaFileKeAntrean(e.target.files);
+      e.target.value = '';
+    });
+
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) bacaFileKeAntrean(e.dataTransfer.files);
+    });
+
+    document.getElementById('promptInput').addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items || [];
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          const namedFile = new File([file], `screenshot_${Date.now()}.png`, { type: file.type });
+          bacaFileKeAntrean([namedFile]);
+        }
+      }
+    });
+
+    document.getElementById('promptInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        kirimPesan();
+      }
+    });
+
+    // --- KIRIM & HENTIKAN ORDER VIA HTTP POST ---
+    async function kirimPesan() {
+      const inputEl = document.getElementById('promptInput');
+      const prompt = inputEl.value.trim();
+      if (!prompt && fileAntrean.length === 0) return;
+
+      const filesDikirim = [...fileAntrean];
+      const resetWorkspace = document.getElementById('chkReset').checked;
+
+      tambahChat('user', prompt || '(Menganalisis file lampiran)', filesDikirim.map((f) => f.name));
+      inputEl.value = '';
+      fileAntrean = [];
+      renderAttachmentBar();
+      document.getElementById('btnKirim').disabled = true;
+
+      const btnStop = document.getElementById('btnStop');
+      if (btnStop) {
+        btnStop.disabled = false;
+        btnStop.innerText = '⏹ Stop';
+        btnStop.style.display = 'inline-flex';
+      }
+
+      isOrderRunning = true;
+      tokenTelemetry.orderTotal = 0;
+      tokenTelemetry.orderStartTime = Date.now();
+      tokenTelemetry.burnRate = 0;
+      tokenTelemetry.activeAgent = 'Manager';
+
+      agents.Manager.activeBrain = currentBrain;
+      suruhJalan('Manager', ZONA.meja.Manager.gx, ZONA.meja.Manager.gy, 'working');
+      setBubble('Manager', 'Memeriksa brief...');
+      boardStatus = 'MANAGER MEMBACA BRIEF';
+      boardColor = '#38bdf8';
+
+      const res = await fetch('/api/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, files: filesDikirim, resetWorkspace })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        tambahLog(`⚠️ ${errData.error || 'Gagal mengirim tugas.'}`, '#f87171');
+        document.getElementById('btnKirim').disabled = false;
+        if (btnStop) btnStop.style.display = 'none';
+        isOrderRunning = false;
+      }
+    }
+
+    async function hentikanTugas() {
+      const btnStop = document.getElementById('btnStop');
+      if (btnStop) {
+        btnStop.disabled = true;
+        btnStop.innerText = 'Stopping...';
+      }
+      try {
+        await fetch('/api/cancel', { method: 'POST' });
+      } catch (err) {
+        tambahLog(`⚠️ Gagal mengirim perintah stop: ${err.message}`, '#f87171');
+      } finally {
+        if (btnStop) {
+          btnStop.style.display = 'none';
+          btnStop.disabled = false;
+          btnStop.innerText = '⏹ Stop';
+        }
+        document.getElementById('btnKirim').disabled = false;
+      }
+    }
+
+    // --- WEBSOCKET REALTIME ---
+    const ws = new WebSocket(`ws://${location.host}`);
+    ws.onopen = () => tambahLog('Terhubung ke Kantor AI Server (Close-Up 2.5D + User Key Ready).', '#4ade80');
+    ws.onclose = () => {
+      tambahLog('Koneksi server terputus.', '#f87171');
+      document.getElementById('btnKirim').disabled = false;
+      const btnStop = document.getElementById('btnStop');
+      if (btnStop) btnStop.style.display = 'none';
+      isOrderRunning = false;
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === 'OTAK_AKTIF') {
+        setActiveBrain(data.nama);
+      } else if (data.type === 'TOKEN_UPDATE') {
+        catatTokenMasuk(data.totalToken);
+      } else if (data.type === 'AKTIVITAS_TOOL') {
+        tokenTelemetry.activeAgent = data.agent || tokenTelemetry.activeAgent;
+        if (agents[tokenTelemetry.activeAgent]) {
+          agents[tokenTelemetry.activeAgent].activeBrain = currentBrain;
+        }
+        const failoverMatch = data.aksi?.match(/pindah ke (.+?)\.\.\.$/);
+        if (failoverMatch) {
+          setActiveBrain(failoverMatch[1]);
+        }
+        tambahLog(`🛠️ [${data.agent}] ${data.aksi}`, '#facc15');
+        setBubble(data.agent, data.aksi, 360);
+      } else if (data.type === 'PINDAH_MEJA') {
+        tokenTelemetry.activeAgent = data.ke || tokenTelemetry.activeAgent;
+        tambahLog(`➡️ [${data.dari} → ${data.ke}] ${data.pesan}`, '#38bdf8');
+        boardStatus = `${data.ke.toUpperCase()} BERTUGAS`;
+        boardColor = agents[data.ke]?.warnaBaju || '#38bdf8';
+
+        const tujuan = ZONA.meja[data.ke];
+        if (tujuan) {
+          agents[data.ke].activeBrain = currentBrain;
+          suruhJalan(data.ke, tujuan.gx, tujuan.gy, 'working');
+          setBubble(data.ke, 'Siap dikerjakan!');
+
+          if (agents[data.dari]) {
+            const asal = ZONA.meja[data.dari];
+            paketDokumen = {
+              gx: agents[data.dari].gx,
+              gy: agents[data.dari].gy,
+              tGx: tujuan.gx,
+              tGy: tujuan.gy,
+              warna: boardColor
+            };
+            suruhJalan(data.dari, tujuan.gx - 0.65, tujuan.gy - 0.35, 'working', {
+              gx: asal.gx,
+              gy: asal.gy,
+              status: 'working'
+            });
+          }
+        }
+      } else if (data.type === 'SELESAI') {
+        if (typeof data.totalToken === 'number') catatTokenMasuk(data.totalToken);
+        const sisaAkhir = Math.max(0, tokenTelemetry.quotaBudget - tokenTelemetry.sessionTotal);
+        const pctAkhir = ((sisaAkhir / Math.max(1, tokenTelemetry.quotaBudget)) * 100).toFixed(1);
+        tambahLog(`✅ Tugas selesai (${data.totalToken} tok) • Sisa kuota: ${pctAkhir}% (${sisaAkhir.toLocaleString()} tok)`, '#4ade80');
+        boardStatus = 'SELESAI — SIAP ORDER BARU';
+        boardColor = '#4ade80';
+        document.getElementById('btnKirim').disabled = false;
+        const btnStop = document.getElementById('btnStop');
+        if (btnStop) btnStop.style.display = 'none';
+        isOrderRunning = false;
+
+        tambahChat('ai', data.jawaban, data.files || []);
+
+        Object.keys(agents).forEach((nama) => {
+          agents[nama].activeBrain = null;
+          suruhJalan(nama, ZONA.lounge[nama].gx, ZONA.lounge[nama].gy, 'idle');
+          setBubble(nama, 'Beres! ☕', 280);
+        });
+      } else if (data.type === 'DIBATALKAN') {
+        const btnStop = document.getElementById('btnStop');
+        if (btnStop) {
+          btnStop.style.display = 'none';
+          btnStop.disabled = false;
+          btnStop.innerText = '⏹ Stop';
+        }
+        document.getElementById('btnKirim').disabled = false;
+        isOrderRunning = false;
+        paketDokumen = null;
+        boardStatus = 'DIBATALKAN OLEH USER';
+        boardColor = '#facc15';
+        tambahLog(`🛑 ${data.pesan || 'Tugas dihentikan oleh user.'}`, '#facc15');
+        tambahChat('ai', `🛑 ${data.pesan || 'Tugas dihentikan oleh user.'}`, data.files || []);
+
+        Object.keys(agents).forEach((nama) => {
+          const a = agents[nama];
+          const lounge = ZONA.lounge[nama];
+          a.activeBrain = null;
+          a.nextTarget = null;
+          a.statusAfter = null;
+          if (lounge) {
+            a.targetGx = lounge.gx;
+            a.targetGy = lounge.gy;
+            a.status = 'idle';
+          }
+          setBubble(nama, 'Tugas dibatalkan', 260);
+        });
+      } else if (data.type === 'ERROR') {
+        tambahLog(`❌ Error: ${data.pesan}`, '#f87171');
+        tambahChat('ai', `⚠️ Kendala: ${data.pesan}`);
+        document.getElementById('btnKirim').disabled = false;
+        const btnStop = document.getElementById('btnStop');
+        if (btnStop) btnStop.style.display = 'none';
+        isOrderRunning = false;
+        paketDokumen = null;
+        boardStatus = 'ERROR — KEMBALI KE LOUNGE';
+        boardColor = '#f87171';
+
+        Object.keys(agents).forEach((nama) => {
+          const a = agents[nama];
+          const lounge = ZONA.lounge[nama];
+          a.activeBrain = null;
+          a.nextTarget = null;
+          a.statusAfter = null;
+          if (lounge) {
+            a.targetGx = lounge.gx;
+            a.targetGy = lounge.gy;
+            a.status = 'idle';
+          }
+          setBubble(nama, 'Kembali ke lounge', 260);
+        });
+
+        if ((data.pesan || '').toLowerCase().includes('api key')) {
+          bukaModalKeys(false);
+        }
+      }
+    };
+
+    // --- PRIMITIF GAMBAR ISOMETRIK 2.5D ---
+    function drawIsoQuad(p1, p2, p3, p4, fill, stroke = null, lineWidth = 1) {
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.closePath();
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+      }
+    }
+
+    function drawIsoBox(gx, gy, gw, gh, gzBottom, gzTop, colors, stroke = null) {
+      const t0 = toIso(gx, gy, gzTop);
+      const t1 = toIso(gx + gw, gy, gzTop);
+      const t2 = toIso(gx + gw, gy + gh, gzTop);
+      const t3 = toIso(gx, gy + gh, gzTop);
+
+      const b1 = toIso(gx + gw, gy, gzBottom);
+      const b2 = toIso(gx + gw, gy + gh, gzBottom);
+      const b3 = toIso(gx, gy + gh, gzBottom);
+
+      drawIsoQuad(t3, t2, b2, b3, colors.left, stroke);
+      drawIsoQuad(t1, t2, b2, b1, colors.right, stroke);
+      drawIsoQuad(t0, t1, t2, t3, colors.top, stroke);
+    }
+
+    // --- RENDER LANTAI & DINDING KANTOR 2.5D ---
+    function gambarArsitekturKantor() {
+      const c10_0 = toIso(ISO.gridW, 0, 0);
+      const c10_10 = toIso(ISO.gridW, ISO.gridH, 0);
+      const c0_10 = toIso(0, ISO.gridH, 0);
+
+      const d10_0 = toIso(ISO.gridW, 0, -14);
+      const d10_10 = toIso(ISO.gridW, ISO.gridH, -14);
+      const d0_10 = toIso(0, ISO.gridH, -14);
+
+      drawIsoQuad(c0_10, c10_10, d10_10, d0_10, '#0b1222', '#1e293b');
+      drawIsoQuad(c10_0, c10_10, d10_10, d10_0, '#0f172a', '#1e293b');
+
+      for (let gx = 0; gx < ISO.gridW; gx++) {
+        for (let gy = 0; gy < ISO.gridH; gy++) {
+          const p0 = toIso(gx, gy, 0);
+          const p1 = toIso(gx + 1, gy, 0);
+          const p2 = toIso(gx + 1, gy + 1, 0);
+          const p3 = toIso(gx, gy + 1, 0);
+          const isEven = (gx + gy) % 2 === 0;
+          drawIsoQuad(p0, p1, p2, p3, isEven ? '#131d33' : '#16223b', 'rgba(51, 65, 85, 0.35)', 0.8);
+        }
+      }
+
+      drawIsoQuad(
+        toIso(0.4, 0.5, 0.5),
+        toIso(3.3, 0.5, 0.5),
+        toIso(3.3, 3.5, 0.5),
+        toIso(0.4, 3.5, 0.5),
+        'rgba(30, 41, 75, 0.72)',
+        '#3b82f6',
+        1.1
+      );
+
+      const wallH = 94;
+      drawIsoQuad(
+        toIso(0, 0, wallH),
+        toIso(0, ISO.gridH, wallH),
+        toIso(0, ISO.gridH, 0),
+        toIso(0, 0, 0),
+        '#151f36',
+        '#253352',
+        1.2
+      );
+      drawIsoQuad(
+        toIso(0, 0, 10),
+        toIso(0, ISO.gridH, 10),
+        toIso(0, ISO.gridH, 0),
+        toIso(0, 0, 0),
+        '#0f172a'
+      );
+
+      drawIsoQuad(
+        toIso(0, 0, wallH),
+        toIso(ISO.gridW, 0, wallH),
+        toIso(ISO.gridW, 0, 0),
+        toIso(0, 0, 0),
+        '#1a2744',
+        '#2b3b5e',
+        1.2
+      );
+      drawIsoQuad(
+        toIso(0, 0, 10),
+        toIso(ISO.gridW, 0, 10),
+        toIso(ISO.gridW, 0, 0),
+        toIso(0, 0, 0),
+        '#111a2e'
+      );
+
+      const wTL = toIso(0.05, 4.5, 76);
+      const wTR = toIso(0.05, 8.5, 76);
+      const wBR = toIso(0.05, 8.5, 26);
+      const wBL = toIso(0.05, 4.5, 26);
+      drawIsoQuad(wTL, wTR, wBR, wBL, '#070d19', '#38bdf8', 1.4);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(wTL.x, wTL.y);
+      ctx.lineTo(wTR.x, wTR.y);
+      ctx.lineTo(wBR.x, wBR.y);
+      ctx.lineTo(wBL.x, wBL.y);
+      ctx.closePath();
+      ctx.clip();
+
+      const gedung = [
+        { gy: 4.8, w: 0.7, h: 52 },
+        { gy: 5.6, w: 0.8, h: 64 },
+        { gy: 6.5, w: 0.7, h: 46 },
+        { gy: 7.3, w: 0.9, h: 58 }
+      ];
+      gedung.forEach((g, idx) => {
+        drawIsoQuad(
+          toIso(0.06, g.gy, g.h),
+          toIso(0.06, g.gy + g.w, g.h),
+          toIso(0.06, g.gy + g.w, 24),
+          toIso(0.06, g.gy, 24),
+          '#0f1c33'
+        );
+        const lampu = toIso(0.07, g.gy + 0.35, g.h - 10 - (idx % 2) * 8);
+        ctx.fillStyle = idx % 2 === 0 ? '#38bdf8' : '#facc15';
+        ctx.fillRect(lampu.x - 1.5, lampu.y - 1.5, 3, 3);
+      });
+      ctx.restore();
+
+      const bTL = toIso(2.0, 0.06, 80);
+      const bTR = toIso(6.8, 0.06, 80);
+      const bBR = toIso(6.8, 0.06, 35);
+      const bBL = toIso(2.0, 0.06, 35);
+      drawIsoQuad(bTL, bTR, bBR, bBL, '#070b14', boardColor, 2);
+
+      ctx.save();
+      const bCenter = toIso(4.4, 0.08, 60);
+      ctx.translate(bCenter.x, bCenter.y);
+      ctx.transform(1, 0.5, 0, 1, 0, 0);
+      ctx.fillStyle = boardColor;
+      ctx.font = 'bold 10.5px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(boardStatus, 0, 0);
+
+      ctx.fillStyle = getBrainColor(currentBrain);
+      ctx.font = 'bold 8.5px monospace';
+      const wallBrain = currentBrain.length > 26 ? currentBrain.slice(0, 24) + '..' : currentBrain;
+      ctx.fillText(`AI: ${wallBrain}`, 0, 13);
+      ctx.restore();
+    }
+
+    // --- OBJEK 2.5D UNTUK DEPTH SORTING ---
+    function gambarSofaLounge() {
+      drawIsoBox(0.55, 0.65, 0.65, 2.3, 0, 11, {
+        top: '#334155',
+        left: '#1e293b',
+        right: '#273549'
+      }, '#475569');
+      drawIsoBox(0.55, 0.65, 0.22, 2.3, 11, 22, {
+        top: '#475569',
+        left: '#1e293b',
+        right: '#334155'
+      });
+      drawIsoBox(1.55, 0.75, 1.1, 0.55, 0, 9, {
+        top: '#475569',
+        left: '#1e293b',
+        right: '#334155'
+      }, '#64748b');
+    }
+
+    function gambarServerRack() {
+      const adaKerja = Object.values(agents).some((a) => a.status === 'working');
+      const remPct = Math.max(0, Math.min(100, (tokenTelemetry.displayedRemaining / Math.max(1, tokenTelemetry.quotaBudget)) * 100));
+      const quotaCol = getQuotaColor(remPct);
+      const glowBorder = adaKerja || tokenTelemetry.pulseGlow > 0.05 ? quotaCol : '#334155';
+
+      drawIsoBox(8.2, 0.35, 1.1, 0.85, 0, 68, {
+        top: '#1e293b',
+        left: '#0f172a',
+        right: '#172033'
+      }, glowBorder);
+
+      const ledColors = ['#38bdf8', '#a855f7', '#10b981', '#f59e0b'];
+      for (let i = 0; i < 4; i++) {
+        const gz = 54 - i * 11;
+        const p = toIso(8.42, 1.21, gz);
+        const speed = adaKerja || tokenTelemetry.pulseGlow > 0.1 ? 0.45 : 0.08;
+        const blink = Math.sin(frameCount * speed + i) > 0;
+        ctx.fillStyle = blink ? ledColors[i] : '#1e293b';
+        ctx.fillRect(p.x, p.y, 4, 2.5);
+        ctx.fillRect(p.x + 7, p.y + 3.5, 4, 2.5);
+      }
+
+      drawIsoQuad(
+        toIso(9.31, 0.52, 60),
+        toIso(9.31, 0.88, 60),
+        toIso(9.31, 0.88, 12),
+        toIso(9.31, 0.52, 12),
+        '#090d16'
+      );
+      if (remPct > 0.5) {
+        const barTopZ = 12 + Math.round((remPct / 100) * 48);
+        drawIsoQuad(
+          toIso(9.32, 0.55, barTopZ),
+          toIso(9.32, 0.85, barTopZ),
+          toIso(9.32, 0.85, 12),
+          toIso(9.32, 0.55, 12),
+          quotaCol
+        );
+      }
+    }
+
+    function gambarTanaman(gx, gy) {
+      drawIsoBox(gx, gy, 0.55, 0.55, 0, 12, {
+        top: '#78350f',
+        left: '#451a03',
+        right: '#5c2407'
+      });
+      const c = toIso(gx + 0.27, gy + 0.27, 22);
+      ctx.fillStyle = '#15803d';
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath();
+      ctx.arc(c.x - 3, c.y - 3, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function gambarWorkstation25D(nama, cfg) {
+      const a = agents[nama];
+      const aktif = a.status === 'working' && Math.hypot(a.gx - cfg.gx, a.gy - cfg.gy) < 0.35;
+
+      if (aktif) {
+        const center = toIso(cfg.deskGx + 0.2, cfg.deskGy + 0.5, 1);
+        ctx.save();
+        ctx.fillStyle = cfg.warna;
+        ctx.globalAlpha = 0.16 + Math.sin(frameCount * 0.12) * 0.05;
+        ctx.beginPath();
+        ctx.ellipse(center.x, center.y, 46, 23, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      drawIsoBox(cfg.deskGx - 0.35, cfg.deskGy - 0.55, 0.14, 0.14, 0, 18, {
+        top: '#334155', left: '#0f172a', right: '#1e293b'
+      });
+      drawIsoBox(cfg.deskGx - 0.35, cfg.deskGy + 0.65, 0.14, 0.14, 0, 18, {
+        top: '#334155', left: '#0f172a', right: '#1e293b'
+      });
+
+      drawIsoBox(cfg.deskGx - 0.45, cfg.deskGy - 0.65, 0.95, 1.5, 18, 22, {
+        top: aktif ? '#26344d' : '#1e293b',
+        left: '#0f172a',
+        right: '#172033'
+      }, aktif ? cfg.warna : '#334155');
+
+      drawIsoBox(cfg.deskGx - 0.05, cfg.deskGy - 0.25, 0.16, 0.72, 24, 41, {
+        top: '#334155',
+        left: '#090d16',
+        right: '#1e293b'
+      }, '#475569');
+
+      if (aktif) {
+        drawIsoQuad(
+          toIso(cfg.deskGx - 0.06, cfg.deskGy - 0.2, 39),
+          toIso(cfg.deskGx - 0.06, cfg.deskGy + 0.42, 39),
+          toIso(cfg.deskGx - 0.06, cfg.deskGy + 0.42, 26),
+          toIso(cfg.deskGx - 0.06, cfg.deskGy - 0.2, 26),
+          cfg.warna
+        );
+      }
+
+      const lblPos = toIso(cfg.deskGx + 0.65, cfg.deskGy + 0.95, 0);
+      ctx.font = 'bold 9.5px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = aktif ? '#ffffff' : '#94a3b8';
+      ctx.fillText(cfg.label, lblPos.x, lblPos.y + 10);
+      ctx.textAlign = 'left';
+    }
+
+    function updateAgent(a) {
+      const dx = a.targetGx - a.gx;
+      const dy = a.targetGy - a.gy;
+      const dist = Math.hypot(dx, dy);
+      const speed = 0.055;
+      a.isWalking = false;
+
+      if (dist > speed) {
+        a.gx += (dx / dist) * speed;
+        a.gy += (dy / dist) * speed;
+        a.stepAnim += 0.24;
+        a.isWalking = true;
+      } else {
+        a.gx = a.targetGx;
+        a.gy = a.targetGy;
+        if (a.nextTarget) {
+          const nt = a.nextTarget;
+          a.nextTarget = null;
+          a.targetGx = nt.gx;
+          a.targetGy = nt.gy;
+          a.status = nt.status || 'working';
+        } else if (a.statusAfter) {
+          a.status = a.statusAfter;
+          a.statusAfter = null;
+        }
+      }
+    }
+
+    function gambarAgent25D(a) {
+      const ground = toIso(a.gx, a.gy, 0);
+      const bob = a.isWalking
+        ? Math.abs(Math.sin(a.stepAnim)) * 4.5
+        : a.status === 'working'
+          ? Math.sin(frameCount * 0.25) * 1.4
+          : 0;
+
+      const px = Math.round(ground.x);
+      const py = Math.round(ground.y - bob);
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+      ctx.beginPath();
+      ctx.ellipse(ground.x, ground.y + 2, 11, 5.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (a.status === 'working') {
+        ctx.strokeStyle = a.warnaBaju;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(ground.x, ground.y + 2, 14, 7, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      const kOff = a.isWalking ? Math.sin(a.stepAnim) * 3 : 0;
+      ctx.fillStyle = a.warnaCelana;
+      ctx.fillRect(px - 6, py - 11 + kOff, 5, 11);
+      ctx.fillRect(px + 1, py - 11 - kOff, 5, 11);
+
+      ctx.fillStyle = a.warnaBaju;
+      ctx.fillRect(px - 9, py - 26, 18, 16);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.fillRect(px + 2, py - 26, 7, 16);
+
+      ctx.fillStyle = '#fde68a';
+      ctx.fillRect(px - 8, py - 41, 16, 15);
+      ctx.fillStyle = a.warnaRambut;
+      ctx.fillRect(px - 9, py - 44, 18, 6);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(px - 4, py - 35, 2.5, 2.5);
+      ctx.fillRect(px + 3, py - 35, 2.5, 2.5);
+      if (a.aksesoris === 'headset') {
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(px - 10, py - 38, 2.5, 7);
+        ctx.fillRect(px + 8, py - 38, 2.5, 7);
+      } else if (a.aksesoris === 'tie') {
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(px - 1, py - 25, 2.5, 8);
+      }
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = 'bold 9.5px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(a.nama, px, ground.y + 15);
+      ctx.textAlign = 'left';
+
+      a._screenX = px;
+      a._screenY = py - 52;
+    }
+
+    // --- NEURAL BEAM ANTARA SERVER RACK DAN AGENT BERPIKIR ---
+    function gambarNeuralBeam() {
+      const thinker =
+        Object.values(agents).find((a) => a.status === 'working' && a.nama === tokenTelemetry.activeAgent) ||
+        Object.values(agents).find((a) => a.status === 'working') ||
+        (isOrderRunning ? agents[tokenTelemetry.activeAgent] : null);
+
+      if (!thinker || currentBrain === 'Standby') return;
+
+      const rackTop = toIso(8.75, 0.75, 70);
+      const agentHead = toIso(thinker.gx, thinker.gy, 46);
+      const ctrlX = (rackTop.x + agentHead.x) / 2;
+      const ctrlY = Math.min(rackTop.y, agentHead.y) - 42;
+      const beamCol = getBrainColor(currentBrain);
+
+      ctx.save();
+      ctx.strokeStyle = beamCol;
+      ctx.globalAlpha = 0.42;
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([5, 5]);
+      ctx.lineDashOffset = -frameCount * 0.85;
+      ctx.beginPath();
+      ctx.moveTo(rackTop.x, rackTop.y);
+      ctx.quadraticCurveTo(ctrlX, ctrlY, agentHead.x, agentHead.y);
+      ctx.stroke();
+
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 0.95;
+      [0, 0.5].forEach((offset) => {
+        const t = ((frameCount * 0.018) + offset) % 1;
+        const inv = 1 - t;
+        const bx = inv * inv * rackTop.x + 2 * inv * t * ctrlX + t * t * agentHead.x;
+        const by = inv * inv * rackTop.y + 2 * inv * t * ctrlY + t * t * agentHead.y;
+
+        ctx.fillStyle = beamCol;
+        ctx.beginPath();
+        ctx.arc(bx, by, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+
+    function gambarFloatingTokens() {
+      for (let i = tokenTelemetry.floatingPopups.length - 1; i >= 0; i--) {
+        const fp = tokenTelemetry.floatingPopups[i];
+        fp.gz += 0.35;
+        fp.life--;
+
+        if (fp.life <= 0) {
+          tokenTelemetry.floatingPopups.splice(i, 1);
+          continue;
+        }
+
+        const alpha = Math.min(1, fp.life / 25);
+        const pos = toIso(fp.gx, fp.gy, fp.gz);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = 'bold 10.5px Consolas, monospace';
+        const tw = ctx.measureText(fp.text).width + 12;
+
+        ctx.fillStyle = '#090d16';
+        ctx.beginPath();
+        ctx.roundRect(pos.x - tw / 2, pos.y - 11, tw, 17, 5);
+        ctx.fill();
+        ctx.strokeStyle = fp.color;
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.textAlign = 'center';
+        ctx.fillText(fp.text, pos.x, pos.y + 1);
+        ctx.restore();
+      }
+    }
+
+    // --- TAG & SPEECH BUBBLE DI DALAM DUNIA 2.5D ---
+    function gambarWorldTags() {
+      const rackHudPos = toIso(8.75, 0.75, 82);
+      const rackBrainCol = getBrainColor(currentBrain);
+      const shortRackBrain = currentBrain.length > 22 ? currentBrain.slice(0, 20) + '..' : currentBrain;
+      ctx.font = 'bold 9.5px Consolas, monospace';
+      const rw = Math.max(76, ctx.measureText(`⚡ ${shortRackBrain}`).width + 14);
+      const rx = Math.min(WORLD_W - rw - 8, rackHudPos.x - rw / 2);
+      const ry = rackHudPos.y - 10;
+
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.9)';
+      ctx.beginPath();
+      ctx.roundRect(rx, ry, rw, 18, 5);
+      ctx.fill();
+      ctx.strokeStyle = rackBrainCol;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      ctx.fillStyle = rackBrainCol;
+      ctx.textAlign = 'center';
+      ctx.fillText(`⚡ ${shortRackBrain}`, rx + rw / 2, ry + 12.5);
+      ctx.textAlign = 'left';
+
+      const dots = ['•', '••', '•••'][Math.floor(frameCount / 18) % 3];
+
+      Object.values(agents).forEach((a) => {
+        const hasBubble = a.bubble && (a.bubbleTimer > 0 || a.status === 'working');
+        let topAnchorY = a._screenY;
+
+        if (hasBubble) {
+          if (a.bubbleTimer > 0) a.bubbleTimer--;
+          ctx.font = 'bold 10px sans-serif';
+          const bw = Math.max(66, ctx.measureText(a.bubble).width + 16);
+          const bx = Math.max(8, Math.min(WORLD_W - bw - 8, a._screenX - bw / 2));
+          const by = Math.max(24, a._screenY - 14);
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.beginPath();
+          ctx.roundRect(bx, by, bw, 21, 6);
+          ctx.fill();
+          ctx.strokeStyle = a.warnaBaju;
+          ctx.lineWidth = 1.6;
+          ctx.stroke();
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.textAlign = 'center';
+          ctx.fillText(a.bubble, bx + bw / 2, by + 14);
+          ctx.textAlign = 'left';
+
+          topAnchorY = by;
+        }
+
+        const isThinkingAgent =
+          a.status === 'working' || (isOrderRunning && a.nama === tokenTelemetry.activeAgent);
+        const brainName = a.activeBrain || (isThinkingAgent ? currentBrain : null);
+
+        if (isThinkingAgent && brainName && brainName !== 'Standby') {
+          const brainLabel = `🧠 ${brainName} ${dots}`;
+          const bCol = getBrainColor(brainName);
+          ctx.font = 'bold 9.5px Consolas, monospace';
+          const mw = Math.max(84, ctx.measureText(brainLabel).width + 14);
+          const mx = Math.max(8, Math.min(WORLD_W - mw - 8, a._screenX - mw / 2));
+          const my = Math.max(4, topAnchorY - 22);
+
+          ctx.fillStyle = 'rgba(6, 11, 25, 0.96)';
+          ctx.beginPath();
+          ctx.roundRect(mx, my, mw, 19, 9);
+          ctx.fill();
+          ctx.strokeStyle = bCol;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.fillStyle = bCol;
+          ctx.textAlign = 'center';
+          ctx.fillText(brainLabel, mx + mw / 2, my + 12.5);
+          ctx.textAlign = 'left';
+        }
+      });
+    }
+
+    // --- 4 PANEL HUD DI SUDUT LAYAR (POSISI TETAP) ---
+    function gambarHUDLayar() {
+      const targetRemaining = Math.max(0, tokenTelemetry.quotaBudget - tokenTelemetry.sessionTotal);
+      tokenTelemetry.displayedSession += (tokenTelemetry.sessionTotal - tokenTelemetry.displayedSession) * 0.18;
+      tokenTelemetry.displayedRemaining += (targetRemaining - tokenTelemetry.displayedRemaining) * 0.18;
+      tokenTelemetry.displayedOrder += (tokenTelemetry.orderTotal - tokenTelemetry.displayedOrder) * 0.18;
+
+      if (tokenTelemetry.pulseGlow > 0) tokenTelemetry.pulseGlow = Math.max(0, tokenTelemetry.pulseGlow - 0.02);
+      if (brainPulse > 0) brainPulse = Math.max(0, brainPulse - 0.025);
+
+      const usedVal = Math.round(tokenTelemetry.displayedSession);
+      const remVal = Math.max(0, Math.round(tokenTelemetry.displayedRemaining));
+      const remPct = Math.max(0, Math.min(100, (tokenTelemetry.displayedRemaining / Math.max(1, tokenTelemetry.quotaBudget)) * 100));
+      const quotaCol = getQuotaColor(remPct);
+
+      const sisaPillEl = document.getElementById('sisaPill');
+      const sisaTextEl = document.getElementById('sisaText');
+      const sisaBarEl = document.getElementById('sisaMiniBar');
+      sisaPillEl.style.color = quotaCol;
+      sisaTextEl.innerText = `🔋 Sisa: ${remPct.toFixed(1)}% (${remVal.toLocaleString()})`;
+      sisaBarEl.style.width = `${remPct.toFixed(1)}%`;
+      sisaBarEl.style.backgroundColor = quotaCol;
+
+      // 1. HUD KIRI ATAS: MISSION STATUS
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.86)';
+      ctx.beginPath();
+      ctx.roundRect(14, 14, 228, 58, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 9.5px sans-serif';
+      ctx.fillText('MISSION STATUS (2.5D LIVE)', 24, 31);
+
+      ctx.fillStyle = boardColor;
+      ctx.font = 'bold 11.5px monospace';
+      ctx.fillText(boardStatus.slice(0, 27), 24, 48);
+
+      const aktifCount = Object.values(agents).filter((a) => a.status === 'working').length;
+      ctx.fillStyle = '#64748b';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(`Divisi Aktif: ${aktifCount}/4  •  Lounge: ${4 - aktifCount}/4`, 24, 63);
+
+      // 2. HUD KANAN ATAS: ACTIVE NEURAL ENGINE
+      const engW = 228;
+      const engH = 58;
+      const engX = viewW - engW - 14;
+      const engY = 14;
+      const engCol = getBrainColor(currentBrain);
+
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.88)';
+      ctx.beginPath();
+      ctx.roundRect(engX, engY, engW, engH, 8);
+      ctx.fill();
+      ctx.strokeStyle = brainPulse > 0.05 || isOrderRunning ? engCol : '#1e293b';
+      ctx.lineWidth = brainPulse > 0.05 ? 1.7 : 1.2;
+      ctx.stroke();
+
+      ctx.fillStyle = isOrderRunning ? '#4ade80' : engCol;
+      ctx.beginPath();
+      ctx.arc(engX + 13, engY + 15, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 9.5px sans-serif';
+      ctx.fillText('ACTIVE NEURAL ENGINE', engX + 22, engY + 18);
+
+      ctx.fillStyle = engCol;
+      ctx.font = 'bold 11.5px Consolas, monospace';
+      const dispBrain = currentBrain.length > 26 ? currentBrain.slice(0, 24) + '..' : currentBrain;
+      ctx.fillText(`🧠 ${dispBrain}`, engX + 12, engY + 37);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px sans-serif';
+      const thinkerLabel = isOrderRunning
+        ? `Sedang berpikir: ${tokenTelemetry.activeAgent}`
+        : 'Status: Siap menerima tugas';
+      ctx.fillText(thinkerLabel, engX + 12, engY + 53);
+
+      // 3. HUD KIRI BAWAH: SISA KUOTA TOKEN (100% -> 0%) & SPARKLINE
+      const hudW = 248;
+      const hudH = 144;
+      const hudX = 14;
+      const hudY = viewH - hudH - 14;
+
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.9)';
+      ctx.beginPath();
+      ctx.roundRect(hudX, hudY, hudW, hudH, 9);
+      ctx.fill();
+      ctx.strokeStyle = tokenTelemetry.pulseGlow > 0.05 ? quotaCol : '#1e293b';
+      ctx.lineWidth = tokenTelemetry.pulseGlow > 0.05 ? 1.6 : 1.2;
+      ctx.stroke();
+
+      ctx.fillStyle = quotaCol;
+      ctx.beginPath();
+      ctx.arc(hudX + 13, hudY + 15, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 9.5px sans-serif';
+      ctx.fillText('SISA KUOTA TOKEN', hudX + 22, hudY + 18);
+
+      ctx.fillStyle = quotaCol;
+      ctx.font = 'bold 15px Consolas, monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${remPct.toFixed(1)}%`, hudX + hudW - 12, hudY + 19);
+      ctx.textAlign = 'left';
+
+      const barX = hudX + 12;
+      const barY = hudY + 26;
+      const barW = hudW - 24;
+      const barH = 12;
+
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, barW, barH, 4);
+      ctx.fill();
+
+      if (remPct > 0.3) {
+        ctx.fillStyle = quotaCol;
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, Math.max(6, (remPct / 100) * barW), barH, 4);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.55)';
+      [0.25, 0.5, 0.75].forEach((mark) => {
+        ctx.fillRect(barX + barW * mark, barY, 1, barH);
+      });
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 10px Consolas, monospace';
+      ctx.fillText(`Sisa: ${remVal.toLocaleString()} / ${tokenTelemetry.quotaBudget.toLocaleString()}`, hudX + 12, hudY + 51);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '9.5px Consolas, monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Terpakai: ${usedVal.toLocaleString()}`, hudX + hudW - 12, hudY + 51);
+      ctx.textAlign = 'left';
+
+      const orderVal = Math.round(tokenTelemetry.displayedOrder);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '9.5px sans-serif';
+      ctx.fillText(`Order ini: ${orderVal.toLocaleString()} tok`, hudX + 12, hudY + 65);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '9.5px Consolas, monospace';
+      ctx.textAlign = 'right';
+      if (!isOrderRunning && orderVal > 0 && remVal > 0) {
+        const estOrders = Math.floor(remVal / orderVal);
+        ctx.fillText(`Est. ~${estOrders}x order`, hudX + hudW - 12, hudY + 65);
+      } else {
+        ctx.fillText(`${tokenTelemetry.burnRate} tok/s`, hudX + hudW - 12, hudY + 65);
+      }
+      ctx.textAlign = 'left';
+
+      const chartX = hudX + 12;
+      const chartY = hudY + 73;
+      const chartW = hudW - 24;
+      const chartH = 59;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      ctx.fillRect(chartX, chartY, chartW, chartH);
+
+      const hist = tokenTelemetry.history;
+      if (hist.length === 0) {
+        ctx.fillStyle = '#475569';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Kuota penuh (100%) — siap diuji', chartX + chartW / 2, chartY + 33);
+        ctx.textAlign = 'left';
+      } else {
+        const maxDelta = Math.max(...hist.map((h) => h.delta), 100);
+        const slotW = chartW / 16;
+        hist.forEach((item, idx) => {
+          const barH = Math.max(4, (item.delta / maxDelta) * (chartH - 8));
+          const bx = chartX + idx * slotW + 2;
+          const by = chartY + chartH - barH - 2;
+          ctx.fillStyle = item.color;
+          ctx.fillRect(bx, by, Math.max(4, slotW - 4), barH);
+        });
+      }
+
+      // 4. HUD KANAN BAWAH: DISTRIBUSI TOKEN PER DIVISI
+      const divW = 232;
+      const divH = 122;
+      const divX = viewW - divW - 14;
+      const divY = viewH - divH - 14;
+
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.88)';
+      ctx.beginPath();
+      ctx.roundRect(divX, divY, divW, divH, 9);
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 9.5px sans-serif';
+      ctx.fillText('TOKEN PER DIVISI (REAL-TIME)', divX + 12, divY + 18);
+
+      const divList = [
+        { key: 'Manager', label: 'Manager', color: '#3b82f6' },
+        { key: 'Analyst', label: 'Analyst', color: '#a855f7' },
+        { key: 'Web Coder', label: 'Web Coder', color: '#10b981' },
+        { key: 'QA Reviewer', label: 'QA Review', color: '#f59e0b' }
+      ];
+
+      const totalDiv = Math.max(1, tokenTelemetry.sessionTotal);
+      divList.forEach((d, idx) => {
+        const rowY = divY + 34 + idx * 22;
+        const val = tokenTelemetry.perAgent[d.key] || 0;
+        const pct = tokenTelemetry.sessionTotal > 0 ? Math.round((val / totalDiv) * 100) : 0;
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(d.label, divX + 12, rowY);
+
+        const barDivX = divX + 74;
+        const barDivW = 86;
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(barDivX, rowY - 7, barDivW, 7);
+
+        if (val > 0) {
+          ctx.fillStyle = d.color;
+          ctx.fillRect(barDivX, rowY - 7, Math.max(3, (val / totalDiv) * barDivW), 7);
+        }
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9.5px Consolas, monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${val.toLocaleString()} (${pct}%)`, divX + divW - 10, rowY);
+        ctx.textAlign = 'left';
+      });
+    }
+
+    // --- MAIN RENDER LOOP ---
+    function loop() {
+      frameCount++;
+      syncCanvasSize();
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, viewW, viewH);
+
+      const worldScale = Math.max(1.05, Math.min((viewW - 24) / 545, (viewH - 16) / 372));
+      const worldCenterX = 380;
+      const worldCenterY = 236;
+
+      ctx.save();
+      ctx.translate(viewW / 2, viewH / 2);
+      ctx.scale(worldScale, worldScale);
+      ctx.translate(-worldCenterX, -worldCenterY);
+
+      gambarArsitekturKantor();
+
+      Object.values(agents).forEach(updateAgent);
+
+      const renderList = [
+        { depth: 2.2, draw: gambarSofaLounge },
+        { depth: 9.2, draw: gambarServerRack },
+        { depth: 9.8, draw: () => gambarTanaman(0.4, 9.1) },
+        { depth: 9.8, draw: () => gambarTanaman(9.1, 0.4) }
+      ];
+
+      Object.entries(ZONA.meja).forEach(([nama, cfg]) => {
+        renderList.push({
+          depth: cfg.deskGx + cfg.deskGy,
+          draw: () => gambarWorkstation25D(nama, cfg)
+        });
+      });
+
+      Object.values(agents).forEach((a) => {
+        renderList.push({
+          depth: a.gx + a.gy + 0.15,
+          draw: () => gambarAgent25D(a)
+        });
+      });
+
+      if (paketDokumen) {
+        const dx = paketDokumen.tGx - paketDokumen.gx;
+        const dy = paketDokumen.tGy - paketDokumen.gy;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0.12) {
+          paketDokumen.gx += (dx / dist) * 0.09;
+          paketDokumen.gy += (dy / dist) * 0.09;
+          renderList.push({
+            depth: paketDokumen.gx + paketDokumen.gy + 0.3,
+            draw: () => {
+              const p = toIso(paketDokumen.gx, paketDokumen.gy, 26 + Math.sin(frameCount * 0.3) * 3);
+              ctx.fillStyle = paketDokumen.warna;
+              ctx.fillRect(p.x - 6, p.y - 8, 12, 15);
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(p.x - 6, p.y - 8, 12, 15);
+            }
+          });
+        } else {
+          paketDokumen = null;
+        }
+      }
+
+      renderList.sort((a, b) => a.depth - b.depth);
+      renderList.forEach((item) => item.draw());
+
+      gambarNeuralBeam();
+      gambarFloatingTokens();
+      gambarWorldTags();
+
+      ctx.restore();
+
+      gambarHUDLayar();
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+</body>
+</html>
