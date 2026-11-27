@@ -4,7 +4,7 @@ import path from 'path';
 
 // 1. Inisialisasi Otak (Groq API)
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || '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'
+  apiKey: process.env.GROQ_API_KEY || ''
 });
 
 const WORKSPACE = './workspace';
