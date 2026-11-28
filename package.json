@@ -13,9 +13,12 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",
     "@google/genai": "^3.6.1",
+    "docx": "^9.16.1",
     "groq-sdk": "^1.6.0",
     "jszip": "^3.10.2",
     "openai": "^7.64.0",
+    "pdfkit": "^0.21.0",
+    "pptxgenjs": "^4.0.1",
     "sharp": "^0.35.5",
     "ws": "^8.23.0",
     "xlsx": "^0.18.5"

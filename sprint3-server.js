@@ -271,7 +271,7 @@ async function jalankanAlurKantor(promptUser, filesLampiran, resetWorkspace = fa
         namaAgent: 'Analyst',
         systemPrompt: bacaSOP('analyst'),
         userContent: susunUserContent(`Arahan Manager: ${keputusanManager}`),
-        izinTools: ['lihat_folder', 'baca_file', 'tulis_file', 'edit_file', 'buat_excel', 'edit_image', 'baca_url'],
+        izinTools: ['lihat_folder', 'baca_file', 'tulis_file', 'edit_file', 'buat_excel', 'edit_image', 'baca_url','bedah_figma_json','ambil_detail_layar_figma','buat_word','buat_ppt','buat_pdf'],
         butuhVision: adaGambar,
         stateToken,
         broadcast,
